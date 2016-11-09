@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="">
+  <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1">
+  <title>photo edit demo</title>
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <!-- Place favicon.ico in the root directory -->
+</head>
+
+<body>
+  <div class="container">
+    <div class="canvas" id="canvas"></div>
+    <div class="add-photo">
+      <input type="file" capture="camera" accept="image/*" value="添加图片" />
+    </div>
+    <div class="show-photo">
+      <input type="button" value="预览图片">
+    </div>
+    <div class="upload-photo">
+      <input type="button" value="上传图片">
+    </div>
+    <div class="get-photo-by-openid">
+      <input type="button" value="获取图片 by OPENID">
+    </div>
+    <div class="get-photo">
+      <input type="button" value="获取图片">
+    </div>
+    <div class="del">
+      <input type="button" value="清空屏幕">
+    </div>
+    <div class="imgTypeBox">
+      <span>图片分类</span>
+      <br>
+      <input type="radio" name="img-type" value="image" checked />image
+      <br>
+      <input type="radio" name="img-type" value="tag" />tag
+    </div>
+    <div class="allEventBox">
+      <span>手势事件</span>
+      <br>
+      <input type="radio" name="all-event" value="1" checked />添加
+      <br>
+      <input type="radio" name="all-event" value="0" />移除
+    </div>
+    <div class="animateBox">
+      <span>动画状态</span>
+      <br>
+      <input type="radio" name="animate" value="1" checked />start
+      <br>
+      <input type="radio" name="animate" value="0" />pause
+    </div>
+    <div class="filterBox">
+      <span>滤镜</span>
+      <br>
+      <input type="checkbox" name="filter" value="Blur" />Blur
+      <input type="checkbox" name="filter" value="Noise" />Noise
+      <input type="checkbox" name="filter" value="ColorMatrix" />ColorMatrix
+      <input type="checkbox" name="filter" value="Bloom" />Bloom
+      <input type="checkbox" name="filter" value="Convolution" />Convolution
+      <input type="checkbox" name="filter" value="CrossHatch" />CrossHatch
+      <input type="checkbox" name="filter" value="Dot" />Dot
+      <input type="checkbox" name="filter" value="Emboss" />Emboss
+      <input type="checkbox" name="filter" value="RGBSplit" />RGBSplit
+      <input type="checkbox" name="filter" value="Twist" />Twist
+    </div>
+    <div class="img-review"></div>
+    <div class="img-list"></div>
+  </div>
+  <!-- build:js scripts/jquery.js -->
+  <script src="/bower_components/jquery/dist/jquery.js"></script>
+  <!-- endbuild -->
+  <!-- build:js scripts/pixi.js -->
+  <script src="/bower_components/pixi.js/bin/pixi.js"></script>
+  <!-- endbuild -->
+  <!-- build:js scripts/pixi-filters.js -->
+  <script src="/bower_components/pixi-filters/bin/filters.js"></script>
+  <!-- endbuild -->
+  <!-- build:js scripts/hammer.js -->
+  <script src="/bower_components/hammerjs/hammer.js"></script>
+  <!-- endbuild -->
+  <!-- build:js scripts/photo-editor.js -->
+  <script src="scripts/photo-editor.js"></script>
+  <!-- endbuild -->
+  <script>
+  // 调用demo
+  $(function() {
+    'use strict';
+
+    var apiUrl = 'http://display.6edigital.com/PhotoEditingModule_interface/index.php/Photo/';
+
+    var apiList = {
+      upload: apiUrl + 'upload',
+      getPhoto: apiUrl + 'getPhoto',
+      getPhotoByOpenId: apiUrl + 'getPhotoByOpenId'
+    };
+
+    /* 初始化 */
+    photoEditor.init({
+      width: 300,
+      height: 300,
+      autoFixStage: false
+    });
+
+    /* 添加图片 */
+    document.querySelector('.add-photo input').onchange = function(e) {
+      var imgType = document.querySelector('input[name=img-type]:checked').value;
+      var target = e.target.files[0];
+      photoEditor.addSprite(target, imgType);
+      this.value = '';
+    };
+
+    /* 图片预览 */
+    document.querySelector('.show-photo input').onclick = function() {
+      var image = new Image();
+      image.src = photoEditor.renderStage();
+      document.querySelector('.img-review').innerHTML = '';
+      document.querySelector('.img-review').appendChild(image);
+    };
+
+    /* 图片上传 */
+    document.querySelector('.upload-photo input').onclick = function() {
+      var openId = 'openId1234567890',
+        mobile = '13800138000',
+        email = 'test@mail.com',
+        image = photoEditor.renderStage();
+
+      $.ajax({
+          url: apiList.upload,
+          type: 'POST',
+          dataType: 'json',
+          data: {
+            openId: openId,
+            mobile: mobile,
+            email: email,
+            image: image
+          },
+        })
+        .done(function(result) {
+          if (result.code === 0) {
+            alert('success');
+          } else {
+            console.log(result.code);
+            alert('fail');
+          }
+        });
+    };
+
+    /* 显示图片 */
+    document.querySelector('.get-photo-by-openid input').onclick = function() {
+      var openId = 'openId1234567890';
+
+      $.ajax({
+          url: apiList.getPhotoByOpenId,
+          type: 'GET',
+          dataType: 'json',
+          data: {
+            openId: openId
+          },
+        })
+        .done(function(result) {
+          if (result.code === 0) {
+            var image = new Image();
+            image.src = result.message[0].image;
+            document.querySelector('.container').appendChild(image);
+          } else {
+            console.log(result.code);
+            alert('fail');
+          }
+        });
+    };
+
+    /* 显示全部图片 */
+    document.querySelector('.get-photo input').onclick = function() {
+      var page = 1,
+        pageNum = 5;
+      $.ajax({
+          url: apiList.getPhoto,
+          type: 'GET',
+          dataType: 'json',
+          data: {
+            page: page,
+            page_number: pageNum
+          },
+        })
+        .done(function(result) {
+          if (result.code === 0) {
+            result.message.photo_list.forEach(function(element, index) {
+              var image = new Image();
+              image.src = element.image;
+              document.querySelector('.img-list').appendChild(image);
+            });
+          } else {
+            console.log(result.code);
+            alert('fail');
+          }
+        });
+    };
+
+    /* 清空canvas */
+    document.querySelector('.del input').onclick = function() {
+      photoEditor.clear();
+    };
+
+    /* 开关animate */
+    document.querySelector('.animateBox').onchange = function() {
+      photoEditor.switchAnimate();
+    };
+
+    /* 手势事件 */
+    document.querySelector('.allEventBox').onchange = function() {
+      photoEditor.switchTouchEvent();
+    };
+
+    /* 滤镜样式 */
+    var filters = document.querySelectorAll('input[name=filter]');
+    document.querySelector('.filterBox').onchange = function() {
+      var filterVals = [],
+        i, len = filters.length;
+
+      for (i = 0; i < len; i++) {
+        if (filters[i].checked) {
+          filterVals.push(filters[i].value);
+        }
+      }
+
+      photoEditor.addFilter('image', filterVals);
+    };
+  });
+  </script>
+</body>
+
+</html>
